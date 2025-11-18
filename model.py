@@ -3,6 +3,7 @@ import numpy as np # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
 import seaborn as sns  # type: ignore
 from scipy.stats import chi2_contingency  # type: ignore
+from statsmodels.stats.outliers_influence import variance_inflation_factor
 
 df = pd.read_csv('bank.csv', sep=',')
 df.replace('unknown', np.nan, inplace=True)
@@ -117,3 +118,8 @@ chi_square_test('age')
 chi_square_test('education')
 chi_square_test('loan')
 
+#multicollinearity
+vif=pd.DataFrame()
+vif["feature"]=df[num_cols].columns
+vif["VIF"]= [variance_inflation_factor(df[num_cols].values, i) for i in range(len(df[num_cols].columns))]
+print(vif)
