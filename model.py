@@ -3,8 +3,10 @@ import numpy as np # type: ignore
 import matplotlib.pyplot as plt  # type: ignore
 import seaborn as sns  # type: ignore
 from scipy.stats import chi2_contingency  # type: ignore
-from statsmodels.stats.outliers_influence import variance_inflation_factor
+from statsmodels.stats.outliers_influence import variance_inflation_factor # type: ignore
+import statsmodels.formula.api as smf # type: ignore
 
+# LOAD & CLEAN DATA
 df = pd.read_csv('bank.csv', sep=',')
 df.replace('unknown', np.nan, inplace=True)
 
@@ -23,103 +25,141 @@ df['contact'] = df['contact'].cat.add_categories("unknown_contact").fillna("unkn
 df['poutcome'] = df['poutcome'].cat.add_categories("unknown_poutcome").fillna("unknown_poutcome")
 
 # Response Variable
-df['deposit_output'] = df['deposit'].map({'yes': 1, 'no': 0})
+df['deposit_output'] = df['deposit'].map({'yes': 1, 'no': 0}).astype(int)
 
-df.info()
+df = df.drop(columns=['deposit'])
 
-# Plots for understanding the data
+print(df.info())
 
-# Call Duration vs Deposit Subscription
-plt.figure(figsize=(8, 5))
-sns.kdeplot(data=df, x='duration', hue='deposit', fill=True, common_norm=False)
-plt.title('Distribution of Call Duration for Deposit vs No Deposit')
-plt.xlabel('Call Duration (seconds)')
-plt.ylabel('Density')
+# Plots for understanding the data 
+
+# Call Duration vs Deposit Subscription 
+plt.figure(figsize=(8, 5)) 
+sns.kdeplot(data=df, x='duration', hue='deposit_output', fill=True, common_norm=False) 
+plt.title('Distribution of Call Duration for Deposit vs No Deposit') 
+plt.xlabel('Call Duration (seconds)') 
+plt.ylabel('Density') 
+plt.show() 
+
+# Deposit Rate vs Job Type 
+plt.figure(figsize=(10, 4)) 
+sns.barplot( data=df, x='job', y='deposit_output', order=df['job'].value_counts().index ) 
+plt.xticks(rotation=45) 
+plt.title('Deposit Probability by Job Type') 
+plt.ylabel('Probability of Subscription') 
+plt.gca().invert_yaxis() 
+plt.show() 
+
+# Deposit Rate vs Education Level 
+plt.figure(figsize=(8, 4)) 
+sns.barplot( data=df, x='education', y='deposit_output', order=df['education'].value_counts().index ) 
+plt.xticks(rotation=45) 
+plt.gca().invert_yaxis() 
+plt.title('Deposit Probability by Education') 
+plt.show() 
+
+# Correlation Heatmap 
+num_cols = ['age', 'balance', 'duration', 'campaign', 'pdays', 'previous', 'deposit_output'] 
+plt.figure(figsize=(8, 6)) 
+sns.heatmap(df[num_cols].corr(), annot=True, cmap='coolwarm') 
+plt.title("Correlation Heatmap") 
 plt.show()
 
-# Deposit Rate vs Job Type
-plt.figure(figsize=(10, 4))
-sns.barplot(
-    data=df, 
-    x='job', 
-    y='deposit_output', 
-    order=df['job'].value_counts().index
-)
-plt.xticks(rotation=45)
-plt.title('Deposit Probability by Job Type')
-plt.ylabel('Probability of Subscription')
-plt.gca().invert_yaxis()
-plt.show()
-
-# Deposit Rate vs Education Level
-plt.figure(figsize=(8, 4))
-sns.barplot(
-    data=df,
-    x='education',
-    y='deposit_output',
-    order=df['education'].value_counts().index
-)
-plt.xticks(rotation=45)
-plt.gca().invert_yaxis()
-plt.title('Deposit Probability by Education')
-plt.show()
-
-# Correlation Heatmap
-num_cols = ['age', 'balance', 'duration', 'campaign', 'pdays', 'previous', 'deposit_output']
-plt.figure(figsize=(8, 6))
-sns.heatmap(df[num_cols].corr(), annot=True, cmap='coolwarm')
-plt.title("Correlation Heatmap")
-plt.show()
-
-
-# CHI-Square Tests for Categorical Variables
-
+# CHI-SQUARE TEST FUNCTION
 def chi_square_test(col):
-    table = pd.crosstab(df[col], df['deposit'])
+    table = pd.crosstab(df[col], df['deposit_output'])
     chi2, p, dof, expected = chi2_contingency(table)
 
     print("\n" + "="*70)
-    print(f"CHI-SQUARE TEST OF INDEPENDENCE: {col.upper()} vs DEPOSIT SUBSCRIPTION (YES/NO)")
+    print(f"CHI-SQUARE TEST OF INDEPENDENCE: {col.upper()} vs DEPOSIT SUBSCRIPTION")
     print("="*70)
 
-    print(f" Variable Tested: {col}")
-    print(f" Table Shape: {table.shape[0]} categories x 2 (deposit yes/no)\n")
+    print(f"Variable Tested: {col}")
+    print(f"Table Shape   : {table.shape[0]} categories x 2 (deposit yes/no)\n")
 
-    print("NULL HYPOTHESIS (H0):")
-    print(f"  - {col} is independent of deposit subscription.")
-    print("ALTERNATIVE HYPOTHESIS (H1):")
-    print(f"  - {col} and deposit subscription are associated.\n")
+    print("NULL HYPOTHESIS (H0): Independent")
+    print("ALT. HYPOTHESIS (H1): Associated\n")
 
     print(f"Chi-Square Statistic : {chi2:.4f}")
     print(f"Degrees of Freedom   : {dof}")
     print(f"P-value              : {p:.4f}\n")
 
-    # INTERPRETATION
     if p < 0.05:
-        print("INTERPRETATION:")
-        print("   1. p-value < 0.05 -> Reject H0")
-        print(f"  2. There is a statistically significant relationship between {col} and deposit (yes/no).")
-        print("   3. This categorical variable is useful for prediction for deposit subscription.\n")
+        print("INTERPRETATION: Significant association (reject H0)\n")
     else:
-        print("INTERPRETATION:")
-        print("   1. p-value ≥ 0.05 -> Fail to reject H0")
-        print(f"  2. No evidence of an association between {col} and deposit (yes/no).")
-        print("   3. This variable may have low predictive importance for deposit subscription.\n")
+        print("INTERPRETATION: No significant association (fail to reject H0)\n")
 
-    print("- Expected Frequencies Matrix:")
+    print("Expected Frequencies:")
     print(pd.DataFrame(expected, index=table.index, columns=table.columns))
     print("="*70)
 
 
-# Variables to test
+# Run chi-square tests
 chi_square_test('job')
 chi_square_test('marital')
-chi_square_test('age')
 chi_square_test('education')
 chi_square_test('loan')
+chi_square_test('housing')
 
-#multicollinearity
-vif=pd.DataFrame()
-vif["feature"]=df[num_cols].columns
-vif["VIF"]= [variance_inflation_factor(df[num_cols].values, i) for i in range(len(df[num_cols].columns))]
-print(vif)
+
+# MULTICOLLINEARITY CHECK (VIF)
+num_cols = ['age', 'balance', 'duration', 'campaign', 'pdays', 'previous', 'deposit_output']
+vif = pd.DataFrame()
+vif["feature"] = num_cols
+vif["VIF"] = [variance_inflation_factor(df[num_cols].values, i) for i in range(len(num_cols))]
+print("\nVIF Values:\n", vif)
+
+
+# LOGISTIC MODELS (WITH INTERACTIONS)
+def run_logit(formula, name):
+    print("\n" + "="*80)
+    print(f"MODEL: {name}")
+    print("="*80)
+    print(f"Formula: {formula}\n")
+
+    model = smf.logit(formula, data=df).fit(disp=False)
+
+    print(f"AIC: {model.aic:.2f}")
+
+    odds = np.exp(model.params)
+    print("\nOdds Ratios:")
+    print(odds)
+
+    return model
+
+
+# 7 interaction models
+models = {
+    "Duration X Contact"         : "deposit_output ~ duration * contact",
+    "Duration X Month"           : "deposit_output ~ duration * month",
+    "Job X Education"            : "deposit_output ~ job * education",
+    "Housing X Loan"             : "deposit_output ~ housing * loan",
+    "Contact X Previous Outcome" : "deposit_output ~ contact * poutcome",
+    "Age X Balance"              : "deposit_output ~ age * balance",
+    "Campaign X Previous"        : "deposit_output ~ campaign * previous"
+}
+
+results = {}
+
+for name, formula in models.items():
+    results[name] = run_logit(formula, name)
+
+
+# Full model with all predictors (main effects)
+predictors = [c for c in df.columns if c != 'deposit_output']
+full_formula = "deposit_output ~ " + " + ".join(predictors)
+
+
+full_model = run_logit(full_formula, "Full Model")
+results["Full Model"] = full_model
+
+
+# AIC COMPARISON TABLE
+aic_table = pd.DataFrame({
+    "Model": list(results.keys()),
+    "AIC": [results[m].aic if results[m] is not None else np.nan for m in results]
+})
+
+print("\n\n==================== AIC COMPARISON TABLE ====================")
+print(aic_table.sort_values("AIC"))
+print("==============================================================")
