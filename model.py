@@ -103,7 +103,7 @@ chi_square_test('housing')
 
 
 # MULTICOLLINEARITY CHECK (VIF)
-num_cols = ['age', 'balance', 'duration', 'campaign', 'pdays', 'previous', 'deposit_output']
+num_cols = ['age', 'balance', 'duration', 'campaign', 'pdays', 'previous']
 vif = pd.DataFrame()
 vif["feature"] = num_cols
 vif["VIF"] = [variance_inflation_factor(df[num_cols].values, i) for i in range(len(num_cols))]
@@ -118,7 +118,7 @@ def run_logit(formula, name):
     print(f"Formula: {formula}\n")
 
     model = smf.logit(formula, data=df).fit(disp=False)
-
+    print(model.summary())
     print(f"AIC: {model.aic:.2f}")
 
     odds = np.exp(model.params)
@@ -163,3 +163,7 @@ aic_table = pd.DataFrame({
 print("\n\n==================== AIC COMPARISON TABLE ====================")
 print(aic_table.sort_values("AIC"))
 print("==============================================================")
+
+#model after removing non significant predictors
+formula="deposit_output ~ job+marital+education+housing+loan+contact+month+poutcome+balance+duration+campaign"
+final_model = run_logit(formula, "Model after removing non-significant predictors")
