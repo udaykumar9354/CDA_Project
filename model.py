@@ -5,7 +5,12 @@ import seaborn as sns  # type: ignore
 from scipy.stats import chi2_contingency  # type: ignore
 from statsmodels.stats.outliers_influence import variance_inflation_factor # type: ignore
 import statsmodels.formula.api as smf # type: ignore
-from sklearn.metrics import roc_curve, auc # type: ignore
+from sklearn.metrics import roc_curve, auc 
+from sklearn.preprocessing import OneHotEncoder, StandardScaler
+from sklearn.compose import ColumnTransformer
+from sklearn.linear_model import LogisticRegression
+from sklearn.pipeline import Pipeline
+from sklearn.model_selection import KFold, cross_val_score 
 
 # LOAD & CLEAN DATA
 df = pd.read_csv('bank.csv', sep=',')
@@ -180,3 +185,15 @@ plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
 plt.legend()
 plt.show()
+
+#Cross validation
+varCat=['job','marital','education','housing','loan','contact','month','poutcome']
+varNum=['balance','duration','campaign']
+X=df[varCat + varNum]
+y=df['deposit_output']
+
+columns=ColumnTransformer([('cat', OneHotEncoder(drop='first', handle_unknown='ignore'), varCat), ('num', StandardScaler(), varNum)])
+pipeline = Pipeline([('preprocess', columns), ('classifier', LogisticRegression(max_iter=3000))])
+kf = KFold(n_splits=10, shuffle=True, random_state=42)
+cv_scores = cross_val_score(pipeline, X, y, cv=kf, scoring='roc_auc')
+print(f"Cross-Validated Scores: {cv_scores}")
