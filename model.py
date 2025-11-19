@@ -155,9 +155,13 @@ for name, formula in models.items():
 predictors = [c for c in df.columns if c != 'deposit_output']
 full_formula = "deposit_output ~ " + " + ".join(predictors)
 
+full_model = run_logit(full_formula, "Main Effects Model")
+results["Main Effects Model"] = full_model
+print()
 
-full_model = run_logit(full_formula, "Full Model")
-results["Full Model"] = full_model
+#Wald test for significance of predictors in full model
+print("WALD TEST FOR SIGNIFICANCE OF PREDICTORS IN FULL MODEL")
+print(full_model.wald_test_terms(scalar=False))
 
 
 # AIC COMPARISON TABLE
@@ -179,7 +183,7 @@ df["probs"]=final_model.predict(df)
 fpr, tpr, _ = roc_curve(df['deposit_output'], df['probs'])
 roc_auc = auc(fpr, tpr)
 plt.figure()
-plt.plot(fpr, tpr, color='red', label=f'ROC curve (area = {roc_auc:.2f})')
+plt.plot(fpr, tpr, color='red', label=f'Concordance index, c = {roc_auc:.2f})')
 plt.plot([0, 1], [0, 1], color='blue', linestyle='--')
 plt.xlabel('False Positive Rate')
 plt.ylabel('True Positive Rate')
