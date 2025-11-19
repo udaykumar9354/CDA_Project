@@ -5,6 +5,7 @@ import seaborn as sns  # type: ignore
 from scipy.stats import chi2_contingency  # type: ignore
 from statsmodels.stats.outliers_influence import variance_inflation_factor # type: ignore
 import statsmodels.formula.api as smf # type: ignore
+from sklearn.metrics import roc_curve, auc # type: ignore
 
 # LOAD & CLEAN DATA
 df = pd.read_csv('bank.csv', sep=',')
@@ -167,3 +168,15 @@ print("==============================================================")
 #model after removing non significant predictors
 formula="deposit_output ~ job+marital+education+housing+loan+contact+month+poutcome+balance+duration+campaign"
 final_model = run_logit(formula, "Model after removing non-significant predictors")
+
+#ROC curve
+df["probs"]=final_model.predict(df)
+fpr, tpr, _ = roc_curve(df['deposit_output'], df['probs'])
+roc_auc = auc(fpr, tpr)
+plt.figure()
+plt.plot(fpr, tpr, color='red', label=f'ROC curve (area = {roc_auc:.2f})')
+plt.plot([0, 1], [0, 1], color='blue', linestyle='--')
+plt.xlabel('False Positive Rate')
+plt.ylabel('True Positive Rate')
+plt.legend(loc='lower right')
+plt.show()
